@@ -135,6 +135,35 @@ That line arrives through RabbitMQ, independently of the HTTP request/response
 above. The reporting consumer receives its own durable queue copy and persists
 it, which is what step 7's `/reports/summary` response reflects.
 
+## End-to-end load test
+
+The k6 script exercises registration and login, task creation/listing/update/
+deletion, and waits for the reporting consumer to record each task's three
+events. Install [k6](https://grafana.com/docs/k6/latest/set-up/install-k6/),
+make sure the Compose stack is running, then run from this directory:
+
+```bash
+k6 run load-test.js
+```
+
+By default it ramps up to 5 virtual users, holds that load for 1 minute, then
+ramps down. Start with this low load and increase gradually:
+
+```bash
+k6 run -e VUS=10 -e RAMP_DURATION=30s -e HOLD_DURATION=2m load-test.js
+```
+
+The target defaults to `http://localhost:4000`; override it with
+`-e BASE_URL=http://your-host:4000`. The default reporting wait is 20 seconds
+per iteration and can be changed with `-e REPORTING_WAIT_SECONDS=30`.
+
+Each virtual user creates one uniquely named account, reused for its iterations.
+The script deletes each task after exercising it, but user accounts and
+reporting events remain in the databases. Run it only against a development
+environment whose data can grow, and watch container usage with `docker stats`
+and event processing with
+`docker compose logs -f notification-service reporting-consumer`.
+
 ## Project layout
 
 ```
