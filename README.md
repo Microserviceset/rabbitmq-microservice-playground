@@ -215,3 +215,10 @@ rest of the stack first).
   creating the same tables). It's idempotent enough not to matter for a
   learning project, but a production setup would run migrations as a
   one-shot init step instead.
+
+## Contributing
+
+- `main` is protected: all changes go through a pull request.
+- Branch naming: `feature/<service>-<desc>`, `fix/<service>-<desc>`, `chore/...`, `ci/...`, `docs/...`
+- Commits and PR titles follow Conventional Commits, e.g. `feat(auth-service): add refresh token`.
+- CI builds only the services you changed; `ci-success` must pass to merge.
