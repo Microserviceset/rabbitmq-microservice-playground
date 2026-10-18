@@ -1,3 +1,9 @@
+
+
+<img width="524" height="204" alt="Screenshot 2026-10-19 at 1 34 19 AM" src="https://github.com/user-attachments/assets/dae94eb5-7682-4c99-b79e-01ad4c65386e" />
+
+
+
 # Task Manager Microservices
 
 A small task manager built to learn microservices patterns: independent
