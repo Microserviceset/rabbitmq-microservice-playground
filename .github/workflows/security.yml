@@ -79,3 +79,25 @@ jobs:
         with:
           sarif_file: trivy-image.sarif
           category: trivy-image-${{ inputs.service }}
+
+  sonarqube:
+    name: sonarqube
+    runs-on: arc-runner-set              # in-cluster runner: can reach SonarQube
+    continue-on-error: ${{ !inputs.blocking }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0                 # full history: better analysis (blame, new code)
+
+      - name: SonarQube scan
+        uses: SonarSource/sonarqube-scan-action@v5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
+        with:
+          projectBaseDir: ${{ inputs.service }}
+          args: >
+            -Dsonar.projectKey=taskmanager_${{ inputs.service }}
+            -Dsonar.projectName=${{ inputs.service }}
+            -Dsonar.qualitygate.wait=true
+            -Dsonar.qualitygate.timeout=300
