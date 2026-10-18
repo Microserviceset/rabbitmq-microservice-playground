@@ -1,0 +1,15 @@
+name: ARC smoke test
+
+on:
+  pull_request:
+    paths: ['.github/workflows/arc-smoke-test.yml']
+
+jobs:
+  smoke:
+    runs-on: arc-runner-set          # the in-cluster runners
+    steps:
+      - name: Where am I running?
+        run: echo "Runner pod: $(hostname)"
+
+      - name: Can I reach SonarQube inside the cluster?
+        run: curl -s http://sonarqube-sonarqube.sonarqube.svc.cluster.local:9000/api/system/status
