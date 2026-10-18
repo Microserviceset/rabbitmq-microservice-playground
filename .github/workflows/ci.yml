@@ -63,6 +63,7 @@ jobs:
       contents: read
       security-events: write
     uses: ./.github/workflows/security.yml
+    secrets: inherit
     with:
       service: ${{ matrix.service }}
       blocking: false          # report-only for now; flip to true later
