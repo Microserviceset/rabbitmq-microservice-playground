@@ -28,47 +28,55 @@ jobs:
           filters: |
             auth-service:
               - &ci '.github/workflows/ci.yml'
+              - '.github/workflows/security.yml'
               - 'auth-service/**'
             task-service:
               - *ci
+              - '.github/workflows/security.yml'
               - 'task-service/**'
             notification-service:
               - *ci
+              - '.github/workflows/security.yml'
               - 'notification-service/**'
             reporting-service:
               - *ci
+              - '.github/workflows/security.yml'
               - 'reporting-service/**'
             api-gateway:
               - *ci
+              - '.github/workflows/security.yml'
               - 'api-gateway/**'
             web-ui:
               - *ci
+              - '.github/workflows/security.yml'
               - 'web-ui/**'
 
-  build:
-    name: build (${{ matrix.service }})
+  security:
+    name: security (${{ matrix.service }})
     needs: changes
     if: needs.changes.outputs.services != '[]'
-    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         service: ${{ fromJSON(needs.changes.outputs.services) }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Build Docker image
-        run: docker build -t ${{ matrix.service }}:${{ github.sha }} ./${{ matrix.service }}
+    permissions:
+      contents: read
+      security-events: write
+    uses: ./.github/workflows/security.yml
+    with:
+      service: ${{ matrix.service }}
+      blocking: false          # report-only for now; flip to true later
 
   ci-success:
     name: ci-success
-    needs: [changes, build]
+    needs: [changes, security]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Verify all jobs passed
         run: |
           if [[ "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
-            echo "❌ One or more jobs failed"
+            echo "One or more jobs failed"
             exit 1
           fi
-          echo "✅ All required jobs passed (or were skipped)"
+          echo "All required jobs passed (or were skipped)"
