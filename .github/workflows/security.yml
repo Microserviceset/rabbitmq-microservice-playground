@@ -1,0 +1,81 @@
+name: Security scan
+
+on:
+  workflow_call:
+    inputs:
+      service:
+        required: true
+        type: string
+      blocking:
+        description: Fail the job on HIGH/CRITICAL findings
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  security-events: write   # upload SARIF to the Security tab
+
+env:
+  TRIVY_IMAGE: aquasec/trivy:0.58.1   # pinned on purpose
+  EXIT_CODE: ${{ inputs.blocking && '1' || '0' }}
+
+jobs:
+  scan:
+    name: scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # 1) Dependencies + secrets + Dockerfile misconfig (source tree)
+      - name: Trivy filesystem scan (report)
+        run: |
+          docker run --rm -v "$PWD:/src" -w /src $TRIVY_IMAGE fs \
+            --scanners vuln,secret,misconfig \
+            --severity HIGH,CRITICAL \
+            --exit-code $EXIT_CODE \
+            ${{ inputs.service }}
+
+      - name: Trivy filesystem scan (SARIF)
+        if: always()
+        run: |
+          docker run --rm -v "$PWD:/src" -w /src $TRIVY_IMAGE fs \
+            --scanners vuln,secret,misconfig \
+            --severity HIGH,CRITICAL \
+            --format sarif --output trivy-fs.sarif \
+            ${{ inputs.service }}
+
+      # 2) Build the image, then scan it (OS packages + libraries inside)
+      - name: Build image
+        if: always()
+        run: docker build -t ${{ inputs.service }}:scan ./${{ inputs.service }}
+
+      - name: Trivy image scan (report)
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock $TRIVY_IMAGE image \
+            --severity HIGH,CRITICAL --ignore-unfixed \
+            --exit-code $EXIT_CODE \
+            ${{ inputs.service }}:scan
+
+      - name: Trivy image scan (SARIF)
+        if: always()
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD:/out" $TRIVY_IMAGE image \
+            --severity HIGH,CRITICAL --ignore-unfixed \
+            --format sarif --output /out/trivy-image.sarif \
+            ${{ inputs.service }}:scan
+
+      # 3) Publish to the Security tab
+      - name: Upload filesystem results
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-fs.sarif
+          category: trivy-fs-${{ inputs.service }}
+
+      - name: Upload image results
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-image.sarif
+          category: trivy-image-${{ inputs.service }}
